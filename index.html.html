@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🍞 Хлеб и Зрелища</title>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=6c7ee7a4-963d-495e-9199-a4e1e794e159&lang=ru_RU"></script>
+    <style>
+        /* ===== БАЗА ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #f2f4f8;
+            padding: 0;
+            max-width: 100%;
+            overflow-x: hidden;
+            padding-bottom: 80px;
+        }
+
+        /* ===== ШАПКА (мобильная) ===== */
+        .header {
+            background: #1a1a2e;
+            color: white;
+            padding: 14px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .header h1 span { color: #fbbf24; }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.15s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 40px;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        .btn-primary { background: #fbbf24; color: #1a1a2e; }
+        .btn-map { background: #22d3ee; color: #1a1a2e; }
+        .btn-location { background: #34d399; color: #1a1a2e; }
+        .btn-location.active { background: #fbbf24; box-shadow: 0 0 0 3px #fbbf24; }
+        .btn-danger { background: #ef4444; color: white; padding: 8px 12px; }
+        .btn-theme { background: rgba(255,255,255,0.1); color: white; font-size: 16px; padding: 8px 12px; }
+        .btn-upload { background: rgba(255,255,255,0.08); color: white; padding: 8px 12px; position: relative; }
+        .btn-upload input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* ===== ПОИСК + ФИЛЬТРЫ ===== */
+        .filters {
+            background: white;
+            padding: 12px 16px;
+            position: sticky;
+            top: 68px;
+            z-index: 99;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filters input {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 14px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            background: #fafbfc;
+            height: 44px;
+        }
+        .filters input:focus { outline: none; border-color: #fbbf24; }
+
+        .tag-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 6px 14px;
+            background: #f1f3f5;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: 0.15s;
+            user-select: none;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+        }
+        .tag:active { transform: scale(0.94); }
+        .tag.active {
+            background: #fbbf24;
+            border-color: #f59e0b;
+            font-weight: 600;
+        }
+        .tag-location { background: #d1fae5; color: #065f46; }
+        .tag-location.active { background: #34d399; border-color: #059669; }
+
+        .stats {
+            color: #6b7280;
+            font-size: 13px;
+            margin-left: auto;
+            white-space: nowrap;
+            padding: 4px 0;
+        }
+
+        /* ===== СЕТКА КАРТОЧЕК ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 12px 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #f0f0f0;
+            position: relative;
+            transition: 0.15s;
+        }
+        .card:active { transform: scale(0.99); }
+
+        .card .num {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            font-size: 11px;
+            color: #d1d5db;
+            font-weight: 600;
+        }
+
+        .card .distance-badge {
+            display: inline-block;
+            font-size: 11px;
+            background: #d1fae5;
+            color: #065f46;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+            flex: 1;
+            line-height: 1.3;
+        }
+
+        .favorite-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 2px;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: -2px;
+        }
+        .favorite-btn:active { transform: scale(1.2); }
+        .favorite-btn.active { color: #ef4444; }
+
+        .card .address {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 4px 0 8px;
+            line-height: 1.4;
+        }
+
+        .card .reason {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #374151;
+            background: #f8fafc;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border-left: 3px solid #fbbf24;
+            margin: 6px 0 10px;
+        }
+
+        .mini-map {
+            width: 100%;
+            height: 100px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f1f5f9;
+            margin-top: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .card-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .card-actions button {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.15s;
+            background: #f1f3f5;
+            color: #374151;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .card-actions button:active { transform: scale(0.94); }
+        .card-actions .btn-edit { background: #dbeafe; color: #1d4ed8; }
+        .card-actions .btn-delete { background: #fee2e2; color: #dc2626; }
+        .card-actions .btn-map { background: #e0f2fe; color: #0369a1; }
+
+        /* ===== МОДАЛКА ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            z-index: 200;
+            justify-content: center;
+            align-items: flex-end;
+            padding: 16px;
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+            text-align: center;
+        }
+
+        .modal label {
+            display: block;
+            font-weight: 600;
+            margin: 10px 0 4px;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            background: #fafbfc;
+        }
+        .modal input:focus,
+        .modal textarea:focus { outline: none; border-color: #fbbf24; }
+
+        .modal textarea { min-height: 60px; resize: vertical; }
+
+        .modal .coord-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .modal .coord-group input { flex: 1; }
+        .modal .coord-group button {
+            padding: 10px 14px;
+            background: #22d3ee;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            min-height: 44px;
+        }
+        .modal .coord-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .modal .coord-hint code {
+            background: #f1f3f5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .map-picker {
+            height: 200px;
+            margin-top: 8px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            display: none;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        .modal-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 15px;
+            min-height: 44px;
+        }
+        .modal-actions .btn-save { background: #fbbf24; color: #1a1a2e; }
+        .modal-actions .btn-cancel { background: #f1f3f5; color: #374151; }
+
+        /* ===== ПОЛНОЭКРАННАЯ КАРТА ===== */
+        .fullscreen-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(8px);
+            padding: 12px;
+            flex-direction: column;
+        }
+        .fullscreen-overlay.show { display: flex; }
+
+        .fullscreen-title {
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 8px 4px 12px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .fullscreen-title .my-location-info {
+            font-weight: 400;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .fullscreen-map {
+            flex: 1;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #f1f5f9;
+            position: relative;
+        }
+
+        .fullscreen-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 22px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fullscreen-close:active { transform: scale(0.9); }
+
+        /* ===== ПУСТО ===== */
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+            grid-column: 1 / -1;
+        }
+        .empty span { font-size: 48px; display: block; margin-bottom: 12px; }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1a1a2e;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 14px;
+            font-weight: 500;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.35s ease;
+            pointer-events: none;
+            z-index: 400;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== ТЁМНАЯ ТЕМА ===== */
+        body.dark {
+            background: #0f172a;
+        }
+        body.dark .filters,
+        body.dark .card,
+        body.dark .modal {
+            background: #1e293b;
+            border-color: #334155;
+        }
+        body.dark .filters input,
+        body.dark .modal input,
+        body.dark .modal textarea {
+            background: #0f172a;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        body.dark .card h3 { color: #e2e8f0; }
+        body.dark .card .reason { background: #0f172a; color: #e2e8f0; }
+        body.dark .card .num { color: #475569; }
+        body.dark .card .distance-badge { background: #065f46; color: #d1fae5; }
+        body.dark .tag { background: #334155; color: #e2e8f0; }
+        body.dark .tag.active { background: #fbbf24; color: #1a1a2e; }
+        body.dark .tag-location { background: #065f46; color: #d1fae5; }
+        body.dark .tag-location.active { background: #34d399; color: #1a1a2e; }
+        body.dark .stats { color: #94a3b8; }
+        body.dark .modal h2 { color: #e2e8f0; }
+        body.dark .modal label { color: #e2e8f0; }
+        body.dark .modal .coord-hint { color: #94a3b8; }
+        body.dark .modal .coord-hint code { background: #334155; color: #e2e8f0; }
+        body.dark .card-actions { border-color: #334155; }
+        body.dark .card-actions button { background: #334155; color: #e2e8f0; }
+
+        /* ===== АНИМАЦИЯ ПОЯВЛЕНИЯ ===== */
+        .card {
+            animation: fadeIn 0.25s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== СКРОЛЛБАР ===== */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #fbbf24; border-radius: 4px; }
+
+        /* ===== ЗАГРУЗКА ===== */
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- ===== ШАПКА ===== -->
+<div class="header">
+    <h1>🍞 <span>Хлеб</span> и <span>Зрелища</span></h1>
+    <div class="header-actions">
+        <button class="btn btn-location" id="locationBtn" onclick="getMyLocation()">📍</button>
+        <button class="btn btn-map" onclick="showAllOnMap()">🗺️</button>
+        <button class="btn btn-primary" onclick="openModal()">➕</button>
+        <button class="btn btn-upload">📂<input type="file" accept=".csv" onchange="importCSV(event)"></button>
+        <button class="btn btn-theme" onclick="toggleTheme()" id="themeBtn">🌙</button>
+        <button class="btn btn-danger" onclick="resetAll()">↺</button>
+    </div>
+</div>
+
+<!-- ===== ФИЛЬТРЫ ===== -->
+<div class="filters">
+    <input type="text" id="searchInput" placeholder="🔍 Поиск" oninput="render()">
+    <div class="tag-group">
+        <span class="tag active" data-tag="all" onclick="setFilter('all')">Все</span>
+        <span class="tag" data-tag="бургеры" onclick="setFilter('бургеры')">🍔</span>
+        <span class="tag" data-tag="коктейли" onclick="setFilter('коктейли')">🍸</span>
+        <span class="tag" data-tag="пиво" onclick="setFilter('пиво')">🍺</span>
+        <span class="tag" data-tag="завтрак" onclick="setFilter('завтрак')">☀️</span>
+        <span class="tag tag-location" id="nearbyTag" onclick="toggleNearbyFilter()">📍Близко</span>
+    </div>
+    <span class="stats" id="stats">0</span>
+</div>
+
+<!-- ===== КАРТОЧКИ ===== -->
+<div class="grid" id="gridContainer"></div>
+
+<!-- ===== КАРТА (полный экран) ===== -->
+<div class="fullscreen-overlay" id="fullscreenOverlay">
+    <div class="fullscreen-title">
+        <span>🗺️ Все места</span>
+        <span class="my-location-info" id="fullscreenLocationInfo"></span>
+    </div>
+    <div class="fullscreen-map" id="fullscreenMap">
+        <button class="fullscreen-close" onclick="closeFullscreen()">✕</button>
+    </div>
+</div>
+
+<!-- ===== МОДАЛКА ===== -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h2 id="modalTitle">➕ Добавить место</h2>
+        <label>Название</label>
+        <input id="editName" placeholder="Бюро">
+        <label>Адрес</label>
+        <input id="editAddress" placeholder="ул. Жуковского, 29">
+        <label>Координаты</label>
+        <div class="coord-group">
+            <input id="editCoords" placeholder="59.958151, 30.297779">
+            <button onclick="openPicker()">📍</button>
+        </div>
+        <div class="coord-hint">широта, долгота</div>
+        <div class="map-picker" id="mapPicker"></div>
+        <label>Ради чего?</label>
+        <textarea id="editReason" placeholder="Бургеры / Тартар"></textarea>
+        <label>Теги</label>
+        <input id="editTags" placeholder="бургеры, десерты">
+        <div style="margin-top:10px;">
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="editFavorite"> ❤️ В избранное
+            </label>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+            <button class="btn-save" onclick="savePlace()">💾 Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+    // ============================================
+    // ДАННЫЕ (по умолчанию)
+    // ============================================
+    const defaultData = [
+        { name: 'Бюро', address: 'ул. Жуковского, 29, СПб', lat: 59.935710, lon: 30.355798, reason: 'Бургеры / Тартар / Фри с трюфельным / десерты', tags: ['бургеры', 'десерты'], favorite: false },
+        { name: 'Федя дичь', address: 'Садовая, 7-9-11, СПб', lat: null, lon: null, reason: 'Шашлыки / Чебуреки / Томатное пиво / крылья', tags: ['шашлык', 'пиво'], favorite: false },
+        { name: 'Полторы комнаты', address: 'ул. Маяковского, 34/4, СПб', lat: 59.940129, lon: 30.355045, reason: 'Кровавая Мэри / коктейли / атмосфера', tags: ['коктейли'], favorite: false },
+        { name: 'Meal', address: 'Литейный пр., 17-19, СПб', lat: 59.943760, lon: 30.347644, reason: 'Тартар / десерты / атмосфера', tags: ['десерты'], favorite: false },
+        { name: 'Сибаристика', address: 'наб. Обводного канала, 199-201К', lat: 59.910412, lon: 30.284159, reason: 'Кофейня / Завтраки', tags: ['завтрак', 'кофе'], favorite: false },
+        { name: 'AF Brew Taproom', address: 'Курляндская, 48, СПб', lat: 59.911169, lon: 30.267493, reason: 'Пивной бар с сырной едой', tags: ['пиво', 'сыр'], favorite: false },
+        { name: 'Solaris', address: 'Курляндская, 49, СПб', lat: 59.911620, lon: 30.267415, reason: 'Шикарный вид на город', tags: ['вид'], favorite: false },
+        { name: 'Frank by basta', address: 'Гороховая, 47Б, СПб', lat: 59.927500, lon: 30.323100, reason: 'Рёбра / Фри с трюфельным', tags: ['бургеры', 'мясо'], favorite: false }
+    ];
+
+    // ============================================
+    // СОСТОЯНИЕ
+    // ============================================
+    let places = [];
+    let editingIndex = null;
+    let currentFilter = 'all';
+    let isDark = false;
+    let pickerMap = null;
+    let fullMap = null;
+    let myLocation = null;
+    let isNearbyMode = false;
+    let isLocating = false;
+
+    // ============================================
+    // ЗАГРУЗКА / СОХРАНЕНИЕ
+    // ============================================
+    function loadData() {
+        const saved = localStorage.getItem('hlebData');
+        if (saved) {
+            try { places = JSON.parse(saved); if (!places.length) places = JSON.parse(JSON.stringify(defaultData)); }
+            catch { places = JSON.parse(JSON.stringify(defaultData)); }
+        } else {
+            places = JSON.parse(JSON.stringify(defaultData));
+        }
+        places.forEach(p => { if (p.favorite === undefined) p.favorite = false; });
+        saveData();
+    }
+    function saveData() { localStorage.setItem('hlebData', JSON.stringify(places)); }
+
+    // ============================================
+    // ПАРСИНГ КООРДИНАТ
+    // ============================================
+    function parseCoords(str) {
+        if (!str || !str.trim()) return null;
+        let cleaned = str.trim().replace(/\s*,\s*/g, ',').replace(/\s+/g, ',');
+        const parts = cleaned.split(',').map(s => parseFloat(s.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            if (parts[0] >= -90 && parts[0] <= 90 && parts[1] >= -180 && parts[1] <= 180) {
+                return { lat: parts[0], lon: parts[1] };
+            }
+        }
+        return null;
+    }
+
+    // ============================================
+    // ГЕОЛОКАЦИЯ
+    // ============================================
+    function getMyLocation() {
+        if (isLocating) return;
+        if (!navigator.geolocation) {
+            showToast('⚠️ Геолокация не поддерживается');
+            return;
+        }
+        const btn = document.getElementById('locationBtn');
+        btn.innerHTML = '<span class="loading-spinner"></span>';
+        btn.disabled = true;
+        isLocating = true;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                myLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                isLocating = false;
+                btn.innerHTML = '📍';
+                btn.disabled = false;
+                btn.classList.add('active');
+                isNearbyMode = true;
+                document.getElementById('nearbyTag').classList.add('active');
+                showToast('📍 Местоположение определено');
+                render();
+                if (fullMap && document.getElementById('fullscreenOverlay').classList.contains('show')) {
+                    updateFullscreenMap();
+                }
+            },
+            (err) => {
+                isLocating = false;
+                btn.innerHTML = '📍';
+                btn.disabled = false;
+                let msg = '⚠️ Не удалось определить';
+                if (err.code === 1) msg = '⚠️ Доступ запрещён';
+                showToast(msg);
+                setTimeout(() => {
+                    if (confirm('Ввести координаты вручную?')) {
+                        const coords = prompt('59.9343, 30.3351');
+                        if (coords) {
+                            const parsed = parseCoords(coords);
+                            if (parsed) {
+                                myLocation = parsed;
+                                isNearbyMode = true;
+                                document.getElementById('nearbyTag').classList.add('active');
+                                btn.classList.add('active');
+                                render();
+                                showToast('✅ Координаты установлены');
+                            }
+                        }
+                    }
+                }, 1000);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+    }
+
+    function toggleNearbyFilter() {
+        if (!myLocation) {
+            showToast('📍 Сначала нажмите 📍');
+            return;
+        }
+        isNearbyMode = !isNearbyMode;
+        const tag = document.getElementById('nearbyTag');
+        tag.classList.toggle('active');
+        showToast(isNearbyMode ? '📏 Ближайшие включены' : '📏 Ближайшие выключены');
+        render();
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    function formatDistance(km) {
+        if (km === Infinity || km === null || isNaN(km)) return null;
+        if (km < 1) return Math.round(km * 1000) + ' м';
+        return km.toFixed(1) + ' км';
+    }
+
+    // ============================================
+    // ИМПОРТ CSV
+    // ============================================
+    function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n').filter(line => line.trim());
+                if (lines.length < 2) { showToast('⚠️ Файл пуст'); return; }
+                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                const nameIdx = headers.findIndex(h => /название/i.test(h));
+                const addressIdx = headers.findIndex(h => /адрес/i.test(h));
+                const coordsIdx = headers.findIndex(h => /координат/i.test(h) || /lat.*lon/i.test(h));
+                const reasonIdx = headers.findIndex(h => /ради/i.test(h) || /чего/i.test(h));
+                if (addressIdx === -1 && nameIdx === -1) {
+                    showToast('⚠️ Не найдены колонки "Название" или "Адрес"');
+                    return;
+                }
+                const newPlaces = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const row = parseCSVLine(lines[i]);
+                    if (row.length < Math.max(addressIdx, nameIdx, 0) + 1) continue;
+                    const name = nameIdx !== -1 ? row[nameIdx]?.trim() || '' : '';
+                    const address = addressIdx !== -1 ? row[addressIdx]?.trim() || '' : '';
+                    const reason = reasonIdx !== -1 ? row[reasonIdx]?.trim() || '' : '';
+                    let lat = null, lon = null;
+                    if (coordsIdx !== -1 && row[coordsIdx]) {
+                        const coordStr = row[coordsIdx].trim().replace(/^"|"$/g, '');
+                        const parsed = parseCoords(coordStr);
+                        if (parsed) { lat = parsed.lat; lon = parsed.lon; }
+                    }
+                    let tags = [];
+                    if (reason) {
+                        const tagCandidates = ['бургер', 'коктейль', 'пиво', 'завтрак', 'вид', 'шашлык', 'десерт', 'мясо', 'сыр', 'кофе'];
+                        const lowerReason = reason.toLowerCase();
+                        tags = tagCandidates.filter(t => lowerReason.includes(t));
+                    }
+                    if (!tags.length) tags = ['еда'];
+                    newPlaces.push({ name, address, lat, lon, reason, tags, favorite: false });
+                }
+                if (!newPlaces.length) { showToast('⚠️ Не удалось распарсить данные'); return; }
+                places = newPlaces;
+                saveData();
+                render();
+                showToast(`✅ Загружено ${places.length} мест`);
+            } catch(err) {
+                showToast('⚠️ Ошибка: ' + err.message);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+        event.target.value = '';
+    }
+
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') { inQuotes = !inQuotes; }
+            else if (char === ',' && !inQuotes) { result.push(current); current = ''; }
+            else { current += char; }
+        }
+        result.push(current);
+        return result;
+    }
+
+    // ============================================
+    // ОТРИСОВКА
+    // ============================================
+    function render() {
+        const search = document.getElementById('searchInput').value.toLowerCase().trim();
+        let filtered = places.filter(p => {
+            const text = (p.name + ' ' + p.address + ' ' + p.reason + ' ' + (p.tags||[]).join(' ')).toLowerCase();
+            if (!text.includes(search)) return false;
+            if (currentFilter !== 'all') {
+                const tagText = (p.name + ' ' + p.reason + ' ' + (p.tags||[]).join(' ')).toLowerCase();
+                if (!tagText.includes(currentFilter)) return false;
+            }
+            return true;
+        });
+
+        if (isNearbyMode && myLocation) {
+            filtered.sort((a, b) => {
+                const distA = calculateDistance(myLocation.lat, myLocation.lon, a.lat, a.lon);
+                const distB = calculateDistance(myLocation.lat, myLocation.lon, b.lat, b.lon);
+                return distA - distB;
+            });
+        } else {
+            filtered.sort((a, b) => {
+                if (a.favorite && !b.favorite) return -1;
+                if (!a.favorite && b.favorite) return 1;
+                return places.indexOf(a) - places.indexOf(b);
+            });
+        }
+
+        document.getElementById('stats').textContent = filtered.length;
+
+        const grid = document.getElementById('gridContainer');
+        if (!filtered.length) {
+            grid.innerHTML = `<div class="empty"><span>🧭</span>Ничего не найдено</div>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map((p, i) => {
+            const idx = places.indexOf(p);
+            const name = p.name || '📍 Без названия';
+            const hasCoords = p.lat != null;
+            const dist = (myLocation && hasCoords) ? calculateDistance(myLocation.lat, myLocation.lon, p.lat, p.lon) : null;
+            const distText = (dist !== null && dist !== Infinity) ? formatDistance(dist) : null;
+            return `
+                <div class="card">
+                    <span class="num">#${idx+1}</span>
+                    ${distText ? `<div class="distance-badge">📏 ${distText}</div>` : ''}
+                    <div class="card-header">
+                        <h3>${escapeHtml(name)}</h3>
+                        <button class="favorite-btn ${p.favorite?'active':''}" onclick="toggleFavorite(${idx})">${p.favorite?'❤️':'🤍'}</button>
+                    </div>
+                    <div class="address">📍 ${escapeHtml(p.address||'')}</div>
+                    <div class="reason">${escapeHtml(p.reason||'—')}</div>
+                    ${hasCoords ? `<div class="mini-map" id="mini_${idx}"></div>` : ''}
+                    <div class="card-actions">
+                        <button class="btn-edit" onclick="editPlace(${idx})">✏️</button>
+                        ${hasCoords ? `<button class="btn-map" onclick="showOnMap(${idx})">🗺️</button>` : ''}
+                        <button class="btn-delete" onclick="deletePlace(${idx})">🗑</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        setTimeout(() => {
+            filtered.forEach(p => {
+                const idx = places.indexOf(p);
+                if (p.lat != null) {
+                    const el = document.getElementById(`mini_${idx}`);
+                    if (el && window.ymaps) initMiniMap(el, p.lat, p.lon, p.name);
+                }
+            });
+        }, 200);
+    }
+
+    function escapeHtml(t) { if (!t) return ''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+
+    function initMiniMap(el, lat, lon, name) {
+        try {
+            const map = new ymaps.Map(el, { center: [lat, lon], zoom: 14, controls: [] });
+            map.geoObjects.add(new ymaps.Placemark([lat, lon], { balloonContent: name || 'Место' }));
+        } catch(e) {}
+    }
+
+    // ============================================
+    // ФИЛЬТРЫ
+    // ============================================
+    function setFilter(tag) {
+        currentFilter = tag;
+        document.querySelectorAll('.tag').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.tag[data-tag="${tag}"]`).classList.add('active');
+        render();
+    }
+
+    // ============================================
+    // МОДАЛКА
+    // ============================================
+    function openModal(data=null, idx=null) {
+        const ov = document.getElementById('modalOverlay');
+        document.getElementById('modalTitle').textContent = data ? '✏️ Редактировать' : '➕ Добавить место';
+        document.getElementById('editName').value = data?.name||'';
+        document.getElementById('editAddress').value = data?.address||'';
+        document.getElementById('editCoords').value = (data?.lat != null && data?.lon != null) ? `${data.lat}, ${data.lon}` : '';
+        document.getElementById('editReason').value = data?.reason||'';
+        document.getElementById('editTags').value = (data?.tags||[]).join(', ');
+        document.getElementById('editFavorite').checked = data?.favorite||false;
+        editingIndex = idx;
+        ov.classList.add('show');
+        document.getElementById('editName').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('show');
+        document.getElementById('mapPicker').style.display = 'none';
+        if (pickerMap) { pickerMap.destroy(); pickerMap = null; }
+        editingIndex = null;
+    }
+
+    function savePlace() {
+        const name = document.getElementById('editName').value.trim();
+        const address = document.getElementById('editAddress').value.trim();
+        const coordsStr = document.getElementById('editCoords').value.trim();
+        const reason = document.getElementById('editReason').value.trim();
+        const tags = document.getElementById('editTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+        const favorite = document.getElementById('editFavorite').checked;
+
+        if (!address && !name) { showToast('⚠️ Укажите название или адрес'); return; }
+
+        let lat = null, lon = null;
+        if (coordsStr) {
+            const parsed = parseCoords(coordsStr);
+            if (parsed) { lat = parsed.lat; lon = parsed.lon; }
+            else { showToast('⚠️ Неверный формат координат'); return; }
+        }
+
+        const place = { name, address, lat, lon, reason, tags: tags.length ? tags : ['еда'], favorite };
+
+        if (editingIndex !== null) { places[editingIndex] = place; showToast('✅ Обновлено'); }
+        else { places.push(place); showToast('✅ Добавлено'); }
+        saveData(); closeModal(); render();
+    }
+
+    function editPlace(i) { openModal(places[i], i); }
+    function deletePlace(i) { if(confirm(`Удалить "${places[i].name||'место'}"?`)) { places.splice(i,1); saveData(); render(); showToast('🗑 Удалено'); } }
+    function toggleFavorite(i) { places[i].favorite = !places[i].favorite; saveData(); render(); }
+
+    // ============================================
+    // КАРТА-ПИКЕР
+    // ============================================
+    function openPicker() {
+        const el = document.getElementById('mapPicker');
+        if (el.style.display === 'block') {
+            el.style.display = 'none';
+            if(pickerMap){pickerMap.destroy();pickerMap=null;}
+            return;
+        }
+        el.style.display = 'block';
+        if (!window.ymaps) { showToast('⏳ Карты загружаются...'); return; }
+
+        let lat = 59.9343, lon = 30.3351;
+        const coordsStr = document.getElementById('editCoords').value.trim();
+        if (coordsStr) {
+            const parsed = parseCoords(coordsStr);
+            if (parsed) { lat = parsed.lat; lon = parsed.lon; }
+        }
+
+        try {
+            pickerMap = new ymaps.Map(el, { center: [lat, lon], zoom: 14, controls: ['zoomControl'] });
+            const pm = new ymaps.Placemark([lat, lon], {}, { draggable: true });
+            pickerMap.geoObjects.add(pm);
+
+            const updateCoords = (c) => {
+                document.getElementById('editCoords').value = `${c[0].toFixed(6)}, ${c[1].toFixed(6)}`;
+            };
+
+            pm.events.add('dragend', e => {
+                const c = e.get('target').geometry.getCoordinates();
+                updateCoords(c);
+            });
+            pickerMap.events.add('click', e => {
+                const c = e.get('coords');
+                updateCoords(c);
+                pm.geometry.setCoordinates(c);
+            });
+        } catch(e) { showToast('⚠️ Ошибка карты'); }
+    }
+
+    // ============================================
+    // ПОЛНОЭКРАННАЯ КАРТА
+    // ============================================
+    function updateFullscreenMap() {
+        if (!fullMap || !window.ymaps) return;
+        try {
+            fullMap.geoObjects.removeAll();
+            const withCoords = places.filter(p => p.lat != null);
+            withCoords.forEach(p => {
+                fullMap.geoObjects.add(new ymaps.Placemark([p.lat, p.lon], {
+                    balloonContent: `<strong>${p.name||'Без названия'}</strong><br>${p.address||''}<br>${p.reason||''}`
+                }));
+            });
+            if (myLocation) {
+                const myPlacemark = new ymaps.Placemark(
+                    [myLocation.lat, myLocation.lon],
+                    { balloonContent: '📍 Вы здесь' },
+                    { preset: 'islands#blueCircleIcon', iconColor: '#3b82f6' }
+                );
+                fullMap.geoObjects.add(myPlacemark);
+                document.getElementById('fullscreenLocationInfo').textContent = `📍 Вы: ${myLocation.lat.toFixed(4)}, ${myLocation.lon.toFixed(4)}`;
+            }
+            const allPoints = [...withCoords];
+            if (myLocation) allPoints.push(myLocation);
+            if (allPoints.length > 1) {
+                fullMap.setBounds(allPoints.map(p => [p.lat, p.lon]), { checkZoomRange: true });
+            } else if (allPoints.length === 1) {
+                fullMap.setCenter([allPoints[0].lat, allPoints[0].lon], 14);
+            }
+        } catch(e) {}
+    }
+
+    function showAllOnMap() {
+        const ov = document.getElementById('fullscreenOverlay');
+        ov.classList.add('show');
+        const el = document.getElementById('fullscreenMap');
+        if (!window.ymaps) { showToast('⏳ Карты загружаются...'); return; }
+        setTimeout(() => {
+            const withCoords = places.filter(p => p.lat != null);
+            if (!withCoords.length && !myLocation) { showToast('⚠️ Нет координат'); return; }
+            try {
+                if (fullMap) { fullMap.destroy(); fullMap = null; }
+                const center = myLocation ? [myLocation.lat, myLocation.lon] : [withCoords[0].lat, withCoords[0].lon];
+                fullMap = new ymaps.Map(el, {
+                    center: center,
+                    zoom: 12,
+                    controls: ['zoomControl', 'fullscreenControl', 'geolocationControl']
+                });
+                withCoords.forEach(p => {
+                    fullMap.geoObjects.add(new ymaps.Placemark([p.lat, p.lon], {
+                        balloonContent: `<strong>${p.name||'Без названия'}</strong><br>${p.address||''}<br>${p.reason||''}`
+                    }));
+                });
+                if (myLocation) {
+                    const myPlacemark = new ymaps.Placemark(
+                        [myLocation.lat, myLocation.lon],
+                        { balloonContent: '📍 Вы здесь' },
+                        { preset: 'islands#blueCircleIcon', iconColor: '#3b82f6' }
+                    );
+                    fullMap.geoObjects.add(myPlacemark);
+                    document.getElementById('fullscreenLocationInfo').textContent = `📍 Вы: ${myLocation.lat.toFixed(4)}, ${myLocation.lon.toFixed(4)}`;
+                }
+                const allPoints = [...withCoords];
+                if (myLocation) allPoints.push(myLocation);
+                if (allPoints.length > 1) {
+                    fullMap.setBounds(allPoints.map(p => [p.lat, p.lon]), { checkZoomRange: true });
+                }
+            } catch(e) { showToast('⚠️ Ошибка карты'); }
+        }, 300);
+    }
+
+    function closeFullscreen() {
+        document.getElementById('fullscreenOverlay').classList.remove('show');
+        if (fullMap) { fullMap.destroy(); fullMap = null; }
+    }
+
+    function showOnMap(i) {
+        const p = places[i];
+        if (p.lat == null) { showToast('⚠️ Нет координат'); return; }
+        showAllOnMap();
+        setTimeout(() => { if (fullMap) fullMap.setCenter([p.lat, p.lon], 15); }, 500);
+    }
+
+    // ============================================
+    // СБРОС
+    // ============================================
+    function resetAll() {
+        if (confirm('Сбросить к исходному списку?')) {
+            places = JSON.parse(JSON.stringify(defaultData));
+            saveData();
+            render();
+            showToast('🔄 Сброшено');
+            myLocation = null;
+            isNearbyMode = false;
+            document.getElementById('nearbyTag').classList.remove('active');
+            document.getElementById('locationBtn').classList.remove('active');
+        }
+    }
+
+    // ============================================
+    // ТЕМА
+    // ============================================
+    function toggleTheme() {
+        isDark = !isDark;
+        document.body.classList.toggle('dark', isDark);
+        document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+        localStorage.setItem('hlebTheme', isDark ? 'dark' : 'light');
+    }
+
+    function loadTheme() {
+        if (localStorage.getItem('hlebTheme') === 'dark') {
+            isDark = true;
+            document.body.classList.add('dark');
+            document.getElementById('themeBtn').textContent = '☀️';
+        }
+    }
+
+    // ============================================
+    // TOAST
+    // ============================================
+    function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // ============================================
+    // ЗАПУСК
+    // ============================================
+    loadData();
+    loadTheme();
+    render();
+
+    document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeModal(); closeFullscreen(); }
+        if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openModal(); }
+    });
+</script>
+</body>
+</html>
